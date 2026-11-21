@@ -86,7 +86,7 @@ function __wbMakeClaude(firebase, cfg) {
 </script>
 </head><body>
 <title>WeBloxy</title>
-<!-- v37: Server feature -->
+<!-- v38: bayar buat, pakaian, draft, move/panjang -->
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -166,6 +166,7 @@ h2.sec { font-size: 20px; margin: 10px 0 12px; display: flex; align-items: cente
 .gcard { text-align: left; background: var(--panel); border: 2px solid var(--line); border-radius: 18px; overflow: hidden; padding: 0; transition: transform .1s; }
 .gcard:hover { transform: translateY(-3px); border-color: var(--blue); }
 .srvlist{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto}.srv{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);border-radius:12px;padding:8px 12px}.srv.cur{outline:2px solid #2ecc71}.srvi{flex:1;min-width:0}.srvi small{display:block;opacity:.75}.srvbar{height:6px;border-radius:4px;background:rgba(255,255,255,.15);margin-top:4px;overflow:hidden}.srvbar i{display:block;height:100%;background:#2ecc71}.srvtag{font-size:12px;opacity:.8}.srvtag.full{color:#ff7a7a;font-weight:700;opacity:1}
+.paintscr{position:absolute;inset:0;display:flex;flex-direction:column;background:#161b30;z-index:5}.paintscr .chead{flex:none}.pwrap{flex:1;min-height:0;overflow:auto;display:flex;padding:10px;background:repeating-conic-gradient(#2a3150 0 25%,#232944 0 50%) 0 0/20px 20px}.pcv{margin:auto;flex:none;image-rendering:pixelated;touch-action:none;background:transparent;border:2px solid #fff;cursor:crosshair}.ptools{flex:none;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;background:rgba(10,14,30,.95)}.ptools .row{display:flex;flex-wrap:wrap;gap:6px}.ptools .hbtn{background:#fff;color:#1a1d24;border:2px solid #c3c9d6;min-height:36px;padding:0 10px;border-radius:10px}.ptools .hbtn.on{background:#2f7bf5;color:#fff;border-color:#2f7bf5}
 .gicon { aspect-ratio: 1; display: grid; place-items: center; font-size: 54px; color: rgba(255,255,255,.92); text-shadow: 0 4px 0 rgba(0,0,0,.25); }
 .gicon.big { width: 120px; height: 120px; border-radius: 22px; font-size: 62px; flex: none; aspect-ratio: auto; }
 .frrow .gicon{width:44px;height:44px;aspect-ratio:auto;border-radius:10px;font-size:24px;flex:none}
@@ -851,7 +852,7 @@ function equipItem(cat, i) {
   mutateUser(ME.name, u => {
     u.equipped = u.equipped || {};
     if (i == null) delete u.equipped[cat]; else {
-      u.equipped[cat] = i;
+      u.equipped[cat] = i; if (u.equipped.cx) { delete u.equipped.cx[cat]; if (cat === 'pants') delete u.equipped.cx.jeans; if (cat === 'jeans') delete u.equipped.cx.pants; }
       if (cat === 'pants') delete u.equipped.jeans;
       if (cat === 'jeans') delete u.equipped.pants;
       if (cat === 'hairm') delete u.equipped.hairf;
@@ -1427,10 +1428,11 @@ function createAvatar(eq) {
   const gf = cc ? cc.gender === 'f' : eq.gender === 'f', TW = gf ? 1.3 : 1.6, AW = gf ? .56 : .7, AX = gf ? .93 : 1.15, LX = gf ? .3 : .38, LW = gf ? .6 : .76;
   const root = A.group, body = new THREE.Group(); root.add(body); A.body = body;
   const SKC = eq.skin ? parseInt(String(eq.skin).slice(1), 16) : SKIN, skin = () => lam(SKC);
-  const has = k => eq[k] != null;
+  const has = k => eq[k] != null, cxo = eq.cx || {}, CI = k => (cxo[k] ? CIT.get(cxo[k]) : null);
+  const ciShirt = CI('shirt'), ciLeg = CI('jeans') || CI('pants'), ciHat = CI('hat'), ciMask = CI('mask'), ciGear = CI('gear'), ciBag = CI('bag'), ciFace = CI('face');
   /* legs */
   const legPair = [];
-  const legTex = has('jeans') ? pantsTex(eq.jeans, true) : has('pants') ? pantsTex(eq.pants, false) : null;
+  const legTex = ciLeg ? (ciTex(ciLeg) || pantsTex(0, false)) : has('jeans') ? pantsTex(eq.jeans, true) : has('pants') ? pantsTex(eq.pants, false) : null;
   [-1, 1].forEach(s => {
     const lg = new THREE.Group(); lg.position.set(s * LX, 1.8, 0);
     if (cc) { const p = ccp[s < 0 ? 'legL' : 'legR']; if (p) lg.add(ccMesh(p, s * LX, 1.8, 0)); }
@@ -1442,16 +1444,16 @@ function createAvatar(eq) {
   /* upper body */
   const up = new THREE.Group(); up.position.y = 1.8; body.add(up); A.upper = up;
   let torsoMat;
-  if (has('shirt')) {
-    const c = C10[Math.floor(eq.shirt / 10)], cm = lam(c);
-    torsoMat = [cm, cm, cm, cm, lam(0xffffff, { map: shirtTex(eq.shirt) }), lam(shade(c, .85))];
+  if (ciShirt || has('shirt')) {
+    const c = ciShirt ? ciShirt.base : C10[Math.floor(eq.shirt / 10)], cm = lam(c);
+    torsoMat = [cm, cm, cm, cm, lam(0xffffff, { map: ciShirt ? ciTex(ciShirt) : shirtTex(eq.shirt) }), lam(shade(c, .85))];
   } else torsoMat = skin();
   if (cc) { if (ccp.torso) up.add(ccMesh(ccp.torso, 0, 1.8, 0)); } else { up.add(mk(BX(TW, 1.8, gf ? .7 : .8), 0, 0, .9, 0, null)); up.children[0].material = torsoMat; }
   const arms = [];
   [-1, 1].forEach(s => {
     const ag = new THREE.Group(); ag.position.set(s * AX, 1.8, 0);
     if (cc) { const p = ccp[s < 0 ? 'armL' : 'armR']; if (p) ag.add(ccMesh(p, s * AX, 3.6, 0)); }
-    else if (has('shirt')) { const cm = lam(C10[Math.floor(eq.shirt / 10)]); ag.add(mk(BX(AW, 1.3, AW), 0, 0, -.65, 0, cm), mk(BX(AW - .02, .5, AW - .02), 0, 0, -1.55, 0, skin())); }
+    else if (ciShirt || has('shirt')) { const cm = lam(ciShirt ? ciShirt.base : C10[Math.floor(eq.shirt / 10)]); ag.add(mk(BX(AW, 1.3, AW), 0, 0, -.65, 0, cm), mk(BX(AW - .02, .5, AW - .02), 0, 0, -1.55, 0, skin())); }
     else ag.add(mk(BX(AW, 1.8, AW), 0, 0, -.9, 0, skin()));
     up.add(ag); arms.push(ag);
   });
@@ -1465,15 +1467,16 @@ function createAvatar(eq) {
     const ftex = faceTex(has('face') ? eq.face : 0);
     const fp = mk(new THREE.PlaneGeometry(info.fw, info.fw), 0, 0, 0, info.fz + .012, new THREE.MeshBasicMaterial({ map: ftex, transparent: true }));
     hd.add(fp);
-    if (has('mask')) { const mg = buildMask(eq.mask, info.fw); mg.position.z = info.fz + .06; hd.add(mg); }
+    if (ciFace && ciFace.tex) hd.add(mk(new THREE.PlaneGeometry(info.fw, info.fw), 0, 0, 0, info.fz + .016, ciFaceMat(ciFace)));
+    if (ciMask) { const mg = ciParts(ciMask); mg.position.z = info.fz + .06; hd.add(mg); } else if (has('mask')) { const mg = buildMask(eq.mask, info.fw); mg.position.z = info.fz + .06; hd.add(mg); }
   }
-  if (has('hat')) { const hg = buildHat(eq.hat); hg.position.y = info.top - .02; hd.add(hg); hg.traverse(o => { if (o.userData.spin) A.spin.push(o); }); }
-  { const hk = has('hairm') ? ['m', eq.hairm] : has('hairf') ? ['f', eq.hairf] : gf ? ['f', 0] : null; if (hk && !headless) hd.add(buildHair(hk[0], hk[1], eq.hcol || HAIR_DEF, info.top, has('hat'), A.hairs, hairScale(info))); }
-  if (has('bag')) { const bg = buildBag(eq.bag); bg.position.set(0, .9, -.75); up.add(bg); }
-  if (has('gear')) {
-    const gg = buildGear(eq.gear); const hold = new THREE.Group(); hold.position.set(0, -1.7, .05);
+  if (ciHat || has('hat')) { const hg = ciHat ? ciParts(ciHat) : buildHat(eq.hat); hg.position.y = info.top - .02; hd.add(hg); hg.traverse(o => { if (o.userData.spin) A.spin.push(o); }); }
+  { const hk = has('hairm') ? ['m', eq.hairm] : has('hairf') ? ['f', eq.hairf] : gf ? ['f', 0] : null; if (hk && !headless) hd.add(buildHair(hk[0], hk[1], eq.hcol || HAIR_DEF, info.top, !!(ciHat || has('hat')), A.hairs, hairScale(info))); }
+  if (ciBag || has('bag')) { const bg = ciBag ? ciParts(ciBag) : buildBag(eq.bag); bg.position.set(0, .9, -.75); up.add(bg); }
+  if (ciGear || has('gear')) {
+    const gg = ciGear ? ciParts(ciGear) : buildGear(eq.gear); const hold = new THREE.Group(); hold.position.set(0, -1.7, .05);
     hold.add(gg); A.armR.add(hold); A.hasGear = true;
-    if (eq.gear === 99) { /* HP: tangan diangkat ke depan, HP tegak di depan tapak tangan, skrin menghadap pemain */
+    if (!ciGear && eq.gear === 99) { /* HP: tangan diangkat ke depan, HP tegak di depan tapak tangan, skrin menghadap pemain */
       hold.rotation.x = 1.3; gg.position.set(0, .8, .42); gg.rotation.y = Math.PI; A.hp = gg.userData.screen; A.hpHeld = true;
     } else { hold.position.z = .3; hold.rotation.x = 1.15; }
   }
@@ -3310,8 +3313,16 @@ function buildCity(scene) {
 
 /* ===== Studio: build a map, test it, publish it ===== */
 const SKY_DEFAULT = '#8fd0ff';
+function rayAxisT(o, d, P, A) { const w = [o.x - P[0], o.y - P[1], o.z - P[2]], b = d.x * A[0] + d.y * A[1] + d.z * A[2], dd = d.x * w[0] + d.y * w[1] + d.z * w[2], e = A[0] * w[0] + A[1] * w[1] + A[2] * w[2], den = 1 - b * b; return Math.abs(den) < 1e-4 ? 0 : (e - b * dd) / den; }
+function gizmoApply(o, D, t) {
+  const dl = D.s * (t - D.t0), sn = v => Math.round(v * 2) / 2;
+  if (D.mode === 'move') { const m = sn(t - D.t0); for (let i = 0; i < 3; i++) o.pos[i] = Math.round((D.pos0[i] + D.dir[i] * m) * 100) / 100; return; }
+  const ns = Math.max(.5, sn(D.scale0[D.a] + dl)); o.scale[D.a] = ns; const sh = D.s * (ns - D.scale0[D.a]) / 2;
+  for (let i = 0; i < 3; i++) o.pos[i] = Math.round((D.pos0[i] + D.dir[i] * sh) * 100) / 100;
+}
 class StudioSession {
   constructor() {
+    this.gmode = 'move'; this.gl = false; this.hg = null; this.gd = null;
     const W = makeWorld(0x8fd0ff); this.S = W.S; this.sun = W.sun;
     this.sun.position.set(60, 120, 40); this.sun.target.position.set(0, 0, 0);
     this.objs = []; this.groups = new Map(); this.sel = null; this.nid = 1; this.sky = SKY_DEFAULT; this.hl = null;
@@ -3323,7 +3334,37 @@ class StudioSession {
   attach() {
     Eng.scene = this.S; this.stop = attachLook(Eng.cv, this.cam, e => this.tap(e));
     Eng.update = dt => this.tick(dt);
+    if (!this.gl) { this.gl = true; this.gdn = e => this.gDown(e); this.gmv = e => this.gMove(e); this.gup = e => this.gUp(e); Eng.cv.addEventListener('pointerdown', this.gdn, true); Eng.cv.addEventListener('pointermove', this.gmv); Eng.cv.addEventListener('pointerup', this.gup); Eng.cv.addEventListener('pointercancel', this.gup); }
   }
+  gSet(m) { this.gmode = m; this.gizmo(); if (this.onGmode) this.onGmode(m); }
+  gizmo() {
+    if (this.hg) { this.S.remove(this.hg); disposeObj(this.hg); this.hg = null; }
+    const o = this.sel && this.find(this.sel), G = o && this.groups.get(o.id); if (!o || !G || !this.gmode) return; if (this.gmode === 'size' && o.kind !== 'part') return;
+    G.updateMatrixWorld(true); const hg = new THREE.Group(), cols = [0xff4d4d, 0x3ddc6a, 0x4da3ff], axes = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    const list = this.gmode === 'move' ? [[0, 1], [1, 1], [2, 1]] : [[0, -1], [0, 1], [1, -1], [1, 1], [2, -1], [2, 1]];
+    list.forEach(([a, s]) => {
+      const ax = axes[a], dir = this.gmode === 'move' ? new V3(ax[0], ax[1], ax[2]) : new V3(ax[0], ax[1], ax[2]).transformDirection(G.matrixWorld), out = dir.clone().multiplyScalar(s);
+      const base = this.gmode === 'move' ? new V3(o.pos[0], o.pos[1], o.pos[2]) : new V3(o.pos[0], o.pos[1], o.pos[2]).addScaledVector(dir, s * o.scale[a] / 2);
+      const g = new THREE.Group(); g.position.copy(base); g.quaternion.setFromUnitVectors(new V3(0, 1, 0), out);
+      const mat = new THREE.MeshBasicMaterial({ color: this.gmode === 'move' ? cols[a] : 0xffd23f, depthTest: false });
+      const sh = new THREE.Mesh(new THREE.CylinderGeometry(.12, .12, 1.4, 8), mat); sh.position.y = .7; const hd = this.gmode === 'move' ? new THREE.Mesh(new THREE.ConeGeometry(.4, .9, 12), mat) : new THREE.Mesh(new THREE.BoxGeometry(.7, .7, .7), mat); hd.position.y = 1.7;
+      const pad = new THREE.Mesh(new THREE.SphereGeometry(1.1, 8, 6), new THREE.MeshBasicMaterial({ visible: false })); pad.position.y = 1.2; pad.userData = { ha: a, hs: s, dir: [dir.x, dir.y, dir.z], base: [base.x, base.y, base.z] };
+      sh.renderOrder = hd.renderOrder = 30; g.add(sh, hd, pad); hg.add(g);
+    });
+    this.hg = hg; this.S.add(hg);
+  }
+  gDown(e) {
+    if (!this.hg || !this.sel || this.gd || Eng.scene !== this.S) return; this.ray.setFromCamera(ndc(e), Eng.cam);
+    const hit = this.ray.intersectObjects(this.hg.children.map(g => g.children[2]), false)[0]; if (!hit) return;
+    e.stopImmediatePropagation(); e.preventDefault(); const u = hit.object.userData, o = this.find(this.sel), r = this.ray.ray;
+    this.gd = { mode: this.gmode, a: u.ha, s: u.hs, dir: u.dir, pos0: o.pos.slice(), scale0: o.scale.slice(), id: e.pointerId, base: u.base }; this.gd.t0 = rayAxisT(r.origin, r.direction, u.base, u.dir);
+    try { Eng.cv.setPointerCapture(e.pointerId); } catch (x) { }
+  }
+  gMove(e) {
+    const D = this.gd; if (!D || e.pointerId !== D.id || Eng.scene !== this.S) return; const o = this.find(this.sel); if (!o) { this.gd = null; return; }
+    this.ray.setFromCamera(ndc(e), Eng.cam); const r = this.ray.ray; gizmoApply(o, D, rayAxisT(r.origin, r.direction, D.base, D.dir)); this.refresh(o); if (this.onDrag) this.onDrag(o);
+  }
+  gUp(e) { if (this.gd && e.pointerId === this.gd.id) { this.gd = null; try { Eng.cv.releasePointerCapture(e.pointerId); } catch (x) { } if (this.onDrop) this.onDrop(); } }
   dirVec() { const c = this.cam; return new V3(-Math.sin(c.yaw) * Math.cos(c.pitch), -Math.sin(c.pitch), -Math.cos(c.yaw) * Math.cos(c.pitch)); }
   tick(dt) {
     const c = this.cam, y = c.yaw, k = 40 * dt;
@@ -3334,6 +3375,7 @@ class StudioSession {
     Eng.cam.position.copy(this.pos); Eng.cam.lookAt(this.pos.clone().add(this.dirVec()));
     this.S.background.set(this.sky); this.S.fog.color.set(this.sky);
     if (this.hl) this.hl.update();
+    if (this.hg && Eng.cam) this.hg.children.forEach(g => { const k = Math.max(.6, g.position.distanceTo(Eng.cam.position) * .045); g.scale.setScalar(k); });
   }
   front(dist) { const d = this.dirVec(); const x = this.pos.x + d.x * dist, z = this.pos.z + d.z * dist; return [Math.round(clamp(x, -190, 190)), Math.round(clamp(z, -190, 190))]; }
   tap(e) {
@@ -3348,7 +3390,7 @@ class StudioSession {
     if (this.hl) { this.S.remove(this.hl); this.hl = null; }
     this.sel = id;
     if (id && this.groups.has(id)) { this.hl = new THREE.BoxHelper(this.groups.get(id), 0xfff04a); this.S.add(this.hl); }
-    if (this.onSelect) this.onSelect(id ? this.find(id) : null);
+    this.gizmo(); if (this.onSelect) this.onSelect(id ? this.find(id) : null);
   }
   addObj(o) {
     o.id = 'o' + (this.nid++); if (!Array.isArray(o.scripts)) o.scripts = [];
@@ -3358,7 +3400,7 @@ class StudioSession {
   refresh(o) {
     const old = this.groups.get(o.id); if (old) { this.S.remove(old); disposeObj(old); }
     const G = buildObject(o); this.S.add(G); this.groups.set(o.id, G);
-    if (this.sel === o.id) { if (this.hl) this.S.remove(this.hl); this.hl = new THREE.BoxHelper(G, 0xfff04a); this.S.add(this.hl); }
+    if (this.sel === o.id) { if (this.hl) this.S.remove(this.hl); this.hl = new THREE.BoxHelper(G, 0xfff04a); this.S.add(this.hl); this.gizmo(); }
     this.touch();
   }
   removeObj(id) {
@@ -3394,7 +3436,7 @@ class StudioSession {
     return this.addObj({ kind: 'bot', type: 'bot', name: name || pick(BOT_NAMES), pos: [p[0], 0, p[1]], scale: [1, 1, 1], rot: 0 });
   }
   data() { return JSON.parse(JSON.stringify(this.objs)); }
-  destroy() { this.stop && this.stop(); Eng.update = null; Eng.scene = null; disposeObj(this.S); }
+  destroy() { if (this.gl) { Eng.cv.removeEventListener('pointerdown', this.gdn, true); Eng.cv.removeEventListener('pointermove', this.gmv); Eng.cv.removeEventListener('pointerup', this.gup); Eng.cv.removeEventListener('pointercancel', this.gup); this.gl = false; } this.stop && this.stop(); Eng.update = null; Eng.scene = null; disposeObj(this.S); }
 }
 
 /* ===== Studio Character: bina watak sendiri, terbit ke Market ===== */
@@ -3416,6 +3458,32 @@ function ccMesh(p, px, py, pz) {
   m.position.set((p.a[0] + p.b[0]) / 2 - px, (p.a[1] + p.b[1]) / 2 - py, (p.a[2] + p.b[2]) / 2 - pz); return m;
 }
 const CCH = { list: () => LS.get('wb_chars', []), save: l => LS.set('wb_chars', l) };
+const MAKE_FEE = 50, SELL_BONUS = 10;
+function lsStore(k, v) { const j = JSON.stringify(v); MEM[k] = j; try { localStorage.setItem(k, j); return true; } catch (e) { return !(e && /quota/i.test(String(e.name) + String(e.message))); } }
+function payMake() { let msg = ''; mutateUser(ME.name, u => { if (u.webux + 1e-9 < MAKE_FEE) { msg = tr('WeBux tidak cukup') + ' (' + MAKE_FEE + ')'; return; } u.webux = r1(u.webux - MAKE_FEE); }); return msg; }
+function payCreator(creator, price) { if (!price || !creator || creator.toLowerCase() === ME.name.toLowerCase()) return; const amt = price + SELL_BONUS; permitWebux(creator, amt); mutateUser(creator, u => { u.webux = r1((u.webux || 0) + amt); }); }
+/* ---- Draft: simpan binaan yang belum siap ---- */
+const DRF = {
+  all() { return LS.get('wb_drafts', []) || []; },
+  list() { return this.all().filter(d => ME && d.owner === ME.name).sort((a, b) => b.updated - a.updated); },
+  put(d) { const l = this.all(); let r = l.find(x => x.id === d.id && x.owner === ME.name);
+    if (!r) { if (l.filter(x => x.owner === ME.name).length >= 30) return { err: 'Maksimum 30 draf' }; r = { id: 'd' + Date.now().toString(36) + Math.floor(Math.random() * 99), owner: ME.name }; l.push(r); }
+    r.type = d.type; r.name = d.name; r.data = JSON.parse(JSON.stringify(d.data)); r.updated = Date.now();
+    if (!lsStore('wb_drafts', l)) return { err: 'Storan penuh' }; return { id: r.id }; },
+  del(id) { if (!id) return; LS.set('wb_drafts', this.all().filter(x => !(x.id === id && x.owner === ME.name))); }
+};
+function saveDraftUI(type, state, getData, onDone) {
+  const name = h('input', { class: 'inp', id: 'dfn', maxlength: 24, placeholder: 'Nama draf' }); name.value = state.name || '';
+  const mo = modal('Simpan Draf', [h('p', { class: 'note', style: 'margin:0 0 8px' }, 'Draf disimpan di peranti ini. Teruskan bila-bila masa dari Studio > Draft.'), h('label', { class: 'f', for: 'dfn' }, 'Nama draf'), name,
+    h('button', { class: 'btn green wide', onclick: () => { const n = name.value.trim() || ('Draf ' + new Date().toLocaleDateString()); const r = DRF.put({ id: state.id, type, name: n, data: getData() }); if (r.err) { toast(tr(r.err), 'err'); return; } state.id = r.id; state.name = n; mo.close(); toast(tr('Draf disimpan'), 'ok'); if (onDone) onDone(); } }, 'Simpan')]); name.focus();
+}
+const DRF_ICO = { game: '🎮', char: '🧍', cloth: '👕' };
+function openDrafts() {
+  const list = h('div', { class: 'srvlist' });
+  const draw = () => { const l = DRF.list(); list.replaceChildren(...(l.length ? l.map(d => h('div', { class: 'srv' }, h('span', { style: 'font-size:26px' }, DRF_ICO[d.type] || '📄'), h('div', { class: 'srvi' }, h('b', null, d.name), h('small', null, fdate(d.updated))),
+    h('button', { class: 'btn green sm', onclick: () => { mo.close(); (d.type === 'game' ? openGameStudio : d.type === 'char' ? openCharStudio : openClothMaker)(d); } }, 'Teruskan'), h('button', { class: 'btn red sm', onclick: () => { DRF.del(d.id); draw(); } }, 'Padam'))) : [h('p', { class: 'note', style: 'padding:12px' }, 'Belum ada draf. Tekan butang Draf semasa membina untuk simpan.')])); };
+  const mo = modal('Draft', [list]); draw();
+}
 
 class CharStudio {
   constructor() {
@@ -3489,19 +3557,23 @@ class CharStudio {
     const k = this.sel, o = { armL: 'armR', armR: 'armL', legL: 'legR', legR: 'legL' }[k]; if (!k || !o) return; const p = this.parts[k];
     this.parts[o] = { t: p.t, c: p.c, a: [-p.b[0], p.a[1], p.a[2]], b: [-p.a[0], p.b[1], p.b[2]] }; this.build(o); this.touch(); return o;
   }
+  load(parts, g) { this.gender = g || 'm'; Object.keys(this.meshes).forEach(k => { this.S.remove(this.meshes[k]); disposeObj(this.meshes[k]); }); this.meshes = {}; this.parts = JSON.parse(JSON.stringify(parts || {})); Object.keys(this.parts).forEach(k => this.build(k)); this.select(null); this.touch(); }
   data() { return JSON.parse(JSON.stringify(this.parts)); }
   setGender(g) { this.gender = g; }
   destroy() { removeEventListener('blur', this.reset0); document.removeEventListener('visibilitychange', this.reset0); Eng.cv.removeEventListener('lostpointercapture', this.reset0); Eng.cv.removeEventListener('pointerdown', this.down, true); Eng.cv.removeEventListener('pointermove', this.move); Eng.cv.removeEventListener('pointerup', this.upEv); Eng.cv.removeEventListener('pointercancel', this.upEv); this.stop && this.stop(); Eng.update = null; Eng.scene = null; disposeObj(this.S); }
 }
 const r2 = n => Math.round(n * 100) / 100;
 
-function openCharStudio() {
+function openCharStudio(draft) {
   clearUI(); setMode('studio'); MUS.stop();
-  const CS = new CharStudio(); CUR = CS; const hud = h('div', { class: 'hud-studio' }); UIROOT().append(hud);
+  const CS = new CharStudio(); CUR = CS; const dState = { id: draft ? draft.id : null, name: draft ? draft.name : '' }; const hud = h('div', { class: 'hud-studio' }); UIROOT().append(hud);
   const exit = () => { CS.destroy(); CUR = null; screenMenu(); };
-  const tryExit = () => { if (!Object.keys(CS.parts).length) return exit(); const mo = modal('Keluar dari Studio?', [h('p', { class: 'desc' }, 'Character ini belum diterbitkan. Jika keluar, semua binaan akan hilang.'), h('div', { class: 'row' }, h('button', { class: 'btn red', onclick: () => { mo.close(); exit(); } }, 'Keluar'), h('button', { class: 'btn', onclick: () => mo.close() }, 'Teruskan bina'))]); };
-  const btns = {}; const bar = h('div', { class: 'stool' }, h('button', { class: 'xbtn', onclick: tryExit, 'aria-label': 'Keluar' }, '×'),
-    CC_KEYS.map(k => (btns[k] = h('button', { class: 'hbtn', onclick: () => CS.add(k) }, CC_DEF[k].n))), h('span', { class: 'sp' }), h('button', { class: 'btn green sm', style: 'flex:none', onclick: publish }, 'Publish'));
+  const tryExit = () => { if (!Object.keys(CS.parts).length) return exit(); const mo = modal('Keluar dari Studio?', [h('p', { class: 'desc' }, 'Character ini belum diterbitkan. Jika keluar, semua binaan akan hilang.'), h('div', { class: 'row' }, h('button', { class: 'btn green', onclick: () => { mo.close(); saveDraftUI('char', dState, getDraft, exit); } }, 'Simpan Draf & Keluar'), h('button', { class: 'btn red', onclick: () => { mo.close(); exit(); } }, 'Keluar'), h('button', { class: 'btn', onclick: () => mo.close() }, 'Teruskan bina'))]); };
+  const getDraft = () => ({ parts: CS.data(), gender: CS.gender });
+  const bMv = h('button', { class: 'hbtn', onclick: () => { CS.setMode('move'); syncM(); } }, 'Move'), bSt = h('button', { class: 'hbtn on', onclick: () => { CS.setMode('stretch'); syncM(); } }, 'Panjang');
+  const syncM = () => { bMv.classList.toggle('on', CS.mode === 'move'); bSt.classList.toggle('on', CS.mode === 'stretch'); };
+  const btns = {}; const bar = h('div', { class: 'stool' }, h('button', { class: 'xbtn', onclick: tryExit, 'aria-label': 'Keluar' }, '×'), bMv, bSt,
+    CC_KEYS.map(k => (btns[k] = h('button', { class: 'hbtn', onclick: () => CS.add(k) }, CC_DEF[k].n))), h('span', { class: 'sp' }), h('button', { class: 'hbtn', onclick: () => saveDraftUI('char', dState, getDraft) }, 'Draf'), h('button', { class: 'btn green sm', style: 'flex:none', onclick: publish }, 'Publish'));
   const panel = h('div', { class: 'spanel' }); hud.append(bar, panel);
   const gsel = h('div', { class: 'spanel right gsel' }); hud.append(gsel);
   const drawG = () => gsel.replaceChildren(h('h4', null, 'Gender'), h('div', { class: 'mseg' }, [['m', '♂ Cowo'], ['f', '♀ Cewe']].map(g => h('button', { class: CS.gender === g[0] ? 'on' : '', onclick: () => { CS.setGender(g[0]); drawG(); toast(g[0] === 'f' ? 'Bahagian baharu guna bentuk cewe' : 'Bahagian baharu guna bentuk cowo', 'ok'); } }, g[1]))));
@@ -3512,7 +3584,6 @@ function openCharStudio() {
     panel.replaceChildren(); const k = CS.sel; panel.hidden = !k; if (!k) return; hint.hidden = true; const p = CS.parts[k];
     const col = h('input', { class: 'inp', type: 'color', value: p.c, id: 'ccol' }); col.addEventListener('input', () => CS.setColor(col.value));
     panel.append(h('h4', null, 'Ubah bentuk: ' + CC_DEF[k].n), h('div', { class: 'shp' }, CC_SHAPES.map(s => h('button', { class: p.t === s[0] ? 'on' : '', onclick: () => CS.setShape(s[0]) }, s[1]))),
-      h('div', { class: 'mseg' }, [['stretch', 'Panjang'], ['move', 'Gerak']].map(m => h('button', { class: CS.mode === m[0] ? 'on' : '', onclick: () => { CS.setMode(m[0]); draw(); } }, m[1]))),
       h('div', { class: 'sf one' }, h('label', { for: 'ccol' }, 'Warna'), col),
       h('div', { class: 'sbtns' }, ['armL', 'armR', 'legL', 'legR'].includes(k) ? h('button', { class: 'btn sm', onclick: () => { const o = CS.mirror(); if (o) toast('Disalin ke ' + CC_DEF[o].n, 'ok'); draw(); } }, 'Cermin') : null,
         h('button', { class: 'btn sm', onclick: () => CS.reset() }, 'Set semula'), h('button', { class: 'btn red sm', onclick: () => CS.remove(k) }, 'Padam')));
@@ -3521,13 +3592,15 @@ function openCharStudio() {
   function publish() {
     if (!CS.has('head') || !CS.has('torso')) { toast('Tambah sekurang-kurangnya Kepala dan Badan', 'err'); return; }
     const name = h('input', { class: 'inp', id: 'cn', maxlength: 16, placeholder: 'Nama character' }), price = h('input', { class: 'inp', id: 'cp', type: 'number', min: 0, max: 1e6, value: 100, inputmode: 'numeric' }), msg = h('div', { class: 'msg' });
-    const mo = modal('Publish Character', [h('label', { class: 'f', for: 'cn' }, 'Nama character'), name, h('label', { class: 'f', for: 'cp' }, 'Harga (WeBux)'), price, msg,
+    const mo = modal('Publish Character', [h('label', { class: 'f', for: 'cn' }, 'Nama character'), name, h('label', { class: 'f', for: 'cp' }, 'Harga (WeBux)'), price, h('p', { class: 'note' }, tr('Kos menerbitkan') + ': ' + MAKE_FEE + ' WeBux. ' + tr('Setiap kali pemain lain membelinya anda dapat harga jualan') + ' + ' + SELL_BONUS + ' WeBux (Bonus).'), msg,
       h('button', { class: 'btn green wide', onclick: () => {
         const n = name.value.trim(), pr = Math.max(0, Math.min(1e6, Math.floor(Number(price.value) || 0))); if (n.length < 3) { msg.className = 'msg err'; msg.textContent = 'Nama minimum 3 huruf'; return; }
+        const er = payMake(); if (er) { msg.className = 'msg err'; msg.textContent = er; return; }
         const l = CCH.list(); l.push({ id: 'c' + Date.now().toString(36) + Math.floor(Math.random() * 99), name: n, creator: ME.name, gender: CS.gender, price: pr, created: Date.now(), parts: CS.data() }); CCH.save(l);
-        mo.close(); exit(); toast('Character diterbitkan ke Market!', 'ok');
+        DRF.del(dState.id); mo.close(); exit(); toast('Character diterbitkan ke Market!', 'ok');
       } }, 'Publish')]); name.focus();
   }
+  if (draft && draft.data) { CS.load(draft.data.parts, draft.data.gender); drawG(); }
   draw();
 }
 
@@ -4343,8 +4416,9 @@ function charChoice() {
 }
 function buyChar(c) {
   let msg = '';
-  mutateUser(ME.name, u => { u.ownedChars = u.ownedChars || []; if (u.ownedChars.includes(c.id)) return; if (u.webux + 1e-9 < c.price) { msg = 'WeBux tidak cukup'; return; } u.webux = r1(u.webux - c.price); u.ownedChars.push(c.id); });
-  if (!msg && c.price && c.creator.toLowerCase() !== ME.name.toLowerCase()) { permitWebux(c.creator, c.price); } if (!msg && c.price && c.creator.toLowerCase() !== ME.name.toLowerCase()) mutateUser(c.creator, u => { u.webux = r1((u.webux || 0) + c.price); });
+  let paid = false;
+  mutateUser(ME.name, u => { u.ownedChars = u.ownedChars || []; if (u.ownedChars.includes(c.id)) return; if (u.webux + 1e-9 < c.price) { msg = 'WeBux tidak cukup'; return; } u.webux = r1(u.webux - c.price); u.ownedChars.push(c.id); paid = true; });
+  if (!msg && paid) payCreator(c.creator, c.price);
   return msg;
 }
 function openCharacter(mode) {
@@ -4354,12 +4428,14 @@ function openCharacter(mode) {
   Thumb.hcol = ME.equipped.hcol || HAIR_DEF; const cv = h('canvas', { id: 'prevcv' });
   const grid = h('div', { class: 'items' }), tabs = h('div', { class: 'tabs', role: 'tablist' }), hbar = h('div', { class: 'hbar' });
   const wx = h('b', null, fmt(ME.webux));
-  const pvEq = () => Object.assign({}, ME.equipped, tryOn || {});
+  const pvEq = () => { const e = Object.assign({}, ME.equipped, tryOn || {}); if (tryOn && tryOn.cx) e.cx = Object.assign({}, ME.equipped.cx || {}, tryOn.cx); return e; };
+  let cfil = '';
   const setPrev = () => PREV && PREV.set(pvEq());
   const cap = h('div', { class: 'cap nopt' }, 'Seret untuk pusing watak');
   const ck = () => cat === 'hair' ? 'hair' + hsub : cat;
   const drawBar = () => {
-    hbar.replaceChildren(); hbar.hidden = cat !== 'hair' && cat !== 'aura'; if (cat !== 'hair' && cat !== 'aura') return;
+    hbar.replaceChildren(); hbar.hidden = cat !== 'hair' && cat !== 'aura' && cat !== 'cloth'; if (cat !== 'hair' && cat !== 'aura' && cat !== 'cloth') return;
+    if (cat === 'cloth') { hbar.append(h('div', { class: 'hcols' }, ...[['', 'Semua']].concat(Object.keys(CI_KINDS).map(k => [k, CI_KINDS[k].n])).map(f => h('button', { class: 'btn sm' + (cfil === f[0] ? ' green' : ''), onclick: () => { cfil = f[0]; drawBar(); render(); } }, f[1])))); return; }
     if (cat === 'aura') {
       const cur = ME.equipped.acol || '', setA = v => { mutateUser(ME.name, u => { if (v) u.equipped.acol = v; else delete u.equipped.acol; }); setPrev(); };
       const pk = h('input', { type: 'color', value: cur || '#ffffff', class: 'hcol', 'aria-label': 'Warna aura custom' }); pk.addEventListener('input', () => setA(pk.value)); pk.addEventListener('change', () => { setA(pk.value); drawBar(); });
@@ -4399,9 +4475,22 @@ function openCharacter(mode) {
         h('div', { class: 'pr' + (c.price ? '' : ' free') }, c.price ? [webuxImg(), fmt(c.price)] : 'Percuma'), btn));
     });
   };
+  const renderCloth = () => {
+    const mineC = it => it.creator.toLowerCase() === ME.name.toLowerCase() || (ME.ownedCI || []).includes(it.id); let list = CIT.list().filter(it => it && CI_KINDS[it.kind]); list = MK ? list.slice().reverse() : list.filter(mineC); if (cfil) list = list.filter(it => it.kind === cfil);
+    if (!list.length) grid.append(h('p', { class: 'note', style: 'padding:14px;grid-column:1/-1' }, MK ? 'Belum ada pakaian buatan pemain. Buat di Studio > Buat Pakaian.' : 'Belum ada item. Beli dahulu di Market.'));
+    list.forEach(it => {
+      const own = mineC(it), eq = (ME.equipped.cx || {})[it.kind] === it.id, cxe = {}; cxe[it.kind] = it.id; let btn;
+      if (MK && own) btn = h('button', { class: 'btn', disabled: true }, 'Dimiliki');
+      else if (!own) btn = h('button', { class: 'btn gold', onclick: () => { const r = buyCI(it); if (r) toast(tr(r), 'err'); else { toast('Dibeli: ' + it.name, 'ok'); wx.textContent = fmt(ME.webux); refreshWebux(); } render(); } }, it.price ? 'Beli' : 'Dapatkan');
+      else btn = h('button', { class: 'btn ' + (eq ? 'on' : 'green'), onclick: () => { equipCI(it, !eq); tryOn = null; setPrev(); render(); } }, eq ? 'Tanggal' : 'Pakai');
+      const im = h('img', { class: 'thumb', alt: it.name }); ciReady(it).then(() => { im.src = Thumb.full({ cx: cxe }); });
+      grid.append(h('div', { class: 'item' + (eq ? ' eq' : '') }, h('div', { onclick: () => { tryOn = { cx: cxe }; setPrev(); } }, im), h('div', { class: 'nm' }, it.name), h('small', { style: 'color:var(--mut)' }, CI_KINDS[it.kind].n + ' · oleh ' + it.creator), h('div', { class: 'pr' + (it.price ? '' : ' free') }, it.price ? [webuxImg(), fmt(it.price)] : 'Percuma'), btn));
+    });
+  };
   const render = () => {
     tq.length = 0; grid.replaceChildren(); grid.scrollTop = 0;
     $$('.tab', tabs).forEach(t => t.classList.toggle('on', t.dataset.k === cat));
+    if (cat === 'cloth') { renderCloth(); return; }
     if (cat === 'body') {
       const g = ME.equipped.gender === 'f' ? 'f' : 'm';
       grid.append(...[['m', 'Lelaki'], ['f', 'Perempuan']].map(o => h('button', { class: 'bodyopt' + (g === o[0] ? ' on' : ''), onclick: () => { mutateUser(ME.name, u => { u.equipped.gender = o[0]; }); tryOn = null; setPrev(); render(); } }, h('b', null, 'Badan ' + o[1]), h('small', null, o[0] === 'f' ? 'Badan lebih ramping, rambut bahu asal' : 'Badan standard'))));
@@ -4427,7 +4516,7 @@ function openCharacter(mode) {
         btn));
     });
   };
-  const TABS = (MK ? [] : [{ key: 'body', label: 'Badan' }]).concat([{ key: 'cchar', label: 'Character' }]).concat(CATS.filter(c => !c.hidden).flatMap(c => c.key === 'face' ? [c, { key: 'hair', label: 'Rambut Baharu' }] : [c]));
+  const TABS = (MK ? [] : [{ key: 'body', label: 'Badan' }]).concat([{ key: 'cchar', label: 'Character' }, { key: 'cloth', label: 'Pakaian Pemain' }]).concat(CATS.filter(c => !c.hidden).flatMap(c => c.key === 'face' ? [c, { key: 'hair', label: 'Rambut Baharu' }] : [c]));
   TABS.forEach(c => tabs.append(h('button', { class: 'tab', role: 'tab', 'data-k': c.key, onclick: () => { cat = c.key; tryOn = null; setPrev(); drawBar(); render(); } }, c.label)));
   const stg = h('div', { class: 'stagebox' }, cap);
   const root = h('div', { class: 'screen charscr' }, cv,
@@ -4657,26 +4746,171 @@ function startGame(game, opts) {
   updLog();
 }
 
+/* ===== Pakaian buatan pemain (lukis + part) ===== */
+const CI_SZ = 128;
+const CI_KINDS = {
+  shirt: { n: 'Baju', note: 'Lukis', base: '#3d6bff' }, pants: { n: 'Seluar Classic', note: 'Lukis', base: '#2d3a8c' }, jeans: { n: 'Seluar Jeans', note: 'Lukis', base: '#3a6ea5' },
+  hat: { n: 'Topi', note: 'Part + Lukis', parts: true }, mask: { n: 'Mask', note: 'Part + Lukis', parts: true }, gear: { n: 'Gear', note: 'Part + Lukis', parts: true },
+  bag: { n: 'Beg', note: 'Part + Lukis', parts: true }, face: { n: 'Muka', note: 'Lukis', face: true }
+};
+const CIT = {
+  mem: {}, _l: null,
+  list() { return this._l || (this._l = LS.get('wb_citems', []) || []); },
+  save(l) { this._l = l; return lsStore('wb_citems', l); },
+  get(id) { return this.mem[id] || this.list().find(x => x.id === id) || null; }
+};
+const CI_TX = {};
+function ciTex(it) {
+  if (!it || !it.tex) return null; const k = it.id + ':' + it.tex.length; if (CI_TX[k]) return CI_TX[k].t;
+  const c = document.createElement('canvas'); c.width = c.height = CI_SZ; const t = new THREE.CanvasTexture(c), e = CI_TX[k] = { t, p: null };
+  e.p = new Promise(res => { const im = new Image(); im.onload = () => { try { c.getContext('2d').drawImage(im, 0, 0, CI_SZ, CI_SZ); t.needsUpdate = true; Thumb.cache = {}; } catch (x) { } res(); }; im.onerror = () => res(); im.src = it.tex; });
+  return t;
+}
+const ciReady = it => { ciTex(it); const e = it && it.tex && CI_TX[it.id + ':' + it.tex.length]; return e ? e.p : Promise.resolve(); };
+function ciParts(it) {
+  const g = new THREE.Group(), tx = ciTex(it);
+  Object.values(it.parts || {}).forEach(p => { const m = ccMesh(p, 0, 0, 0); if (tx) m.material = lam(p.c || '#ffffff', { map: tx }); g.add(m); });
+  return g;
+}
+function ciFaceMat(it) { return new THREE.MeshBasicMaterial({ map: ciTex(it), transparent: true }); }
+function buyCI(it) {
+  let msg = '';
+  let paid = false;
+  mutateUser(ME.name, u => { u.ownedCI = u.ownedCI || []; if (u.ownedCI.includes(it.id)) return; if (u.webux + 1e-9 < it.price) { msg = 'WeBux tidak cukup'; return; } u.webux = r1(u.webux - it.price); u.ownedCI.push(it.id); paid = true; });
+  if (!msg && paid) payCreator(it.creator, it.price);
+  return msg;
+}
+function equipCI(it, on) {
+  mutateUser(ME.name, u => {
+    u.equipped = u.equipped || {}; u.equipped.cx = u.equipped.cx || {}; const cx = u.equipped.cx;
+    if (!on) { delete cx[it.kind]; return; }
+    cx[it.kind] = it.id; delete u.equipped[it.kind];
+    if (it.kind === 'pants') { delete cx.jeans; delete u.equipped.jeans; } if (it.kind === 'jeans') { delete cx.pants; delete u.equipped.pants; }
+  });
+}
+/* ---- editor part (guna semula CharStudio: Move / Panjang) ---- */
+const PS_OY = 3;
+class PartStudio extends CharStudio {
+  constructor(kind) {
+    super(); this.kind = kind; this.n = 0; this.dist = 10; this.tgt.set(0, PS_OY + .3, 0);
+    const wire = new THREE.MeshBasicMaterial({ color: 0x7a8aa8, wireframe: true }), R = (w, hh, d, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), wire); m.position.set(x, y + PS_OY, z); this.S.add(m); this.ref = m; };
+    if (kind === 'hat') R(1.2, 1.2, 1.2, 0, -.6, 0); else if (kind === 'mask') R(1.2, 1.2, 1.2, 0, 0, -.6); else if (kind === 'bag') R(1.6, 1.8, .8, 0, 0, .75); else R(.6, .6, .6, 0, -.3, 0);
+  }
+  def() { const k = this.kind; return k === 'hat' ? { a: [-.5, 0, -.5], b: [.5, 1, .5] } : k === 'mask' ? { a: [-.55, -.4, 0], b: [.55, .4, .15] } : k === 'bag' ? { a: [-.6, -.7, -.3], b: [.6, .7, .3] } : { a: [-.2, 0, -.2], b: [.2, 1.6, .2] }; }
+  addShape(t) {
+    if (Object.keys(this.parts).length >= 16) { toast('Maksimum 16 part', 'err'); return; } const d = this.def(), k = 'p' + (++this.n);
+    this.parts[k] = { t, a: [d.a[0], d.a[1] + PS_OY, d.a[2]], b: [d.b[0], d.b[1] + PS_OY, d.b[2]], c: '#cfd6e6' }; this.build(k); this.touch(); this.select(k);
+  }
+  dup() { const k = this.sel, p = this.parts[k]; if (!p || Object.keys(this.parts).length >= 16) return; const n = 'p' + (++this.n); this.parts[n] = JSON.parse(JSON.stringify(p)); [0, 2].forEach(i => { this.parts[n].a[i] += .3; this.parts[n].b[i] += .3; }); this.build(n); this.touch(); this.select(n); }
+  exportParts() { const o = {}; Object.keys(this.parts).forEach(k => { const p = this.parts[k]; o[k] = { t: p.t, c: p.c, a: [p.a[0], r2(p.a[1] - PS_OY), p.a[2]], b: [p.b[0], r2(p.b[1] - PS_OY), p.b[2]] }; }); return o; }
+  importParts(o) { Object.keys(this.meshes).forEach(k => { this.S.remove(this.meshes[k]); disposeObj(this.meshes[k]); }); this.meshes = {}; this.parts = {}; Object.keys(o || {}).forEach(k => { const p = o[k]; this.parts[k] = { t: p.t, c: p.c, a: [p.a[0], p.a[1] + PS_OY, p.a[2]], b: [p.b[0], p.b[1] + PS_OY, p.b[2]] }; this.build(k); const n = parseInt(k.slice(1), 10); if (n > this.n) this.n = n; }); this.select(null); }
+}
+function floodFill(x, SZ, px, py, hex, bgAlpha) {
+  const img = x.getImageData(0, 0, SZ, SZ), d = img.data, n = parseInt(hex.slice(1), 16), R = n >> 16, G = (n >> 8) & 255, B = n & 255;
+  px = Math.max(0, Math.min(SZ - 1, px | 0)); py = Math.max(0, Math.min(SZ - 1, py | 0)); const i0 = (py * SZ + px) * 4, r0 = d[i0], g0 = d[i0 + 1], b0 = d[i0 + 2], a0 = d[i0 + 3];
+  if (r0 === R && g0 === G && b0 === B && a0 === 255) return;
+  const same = i => d[i] === r0 && d[i + 1] === g0 && d[i + 2] === b0 && d[i + 3] === a0, st = [px, py];
+  while (st.length) { const y = st.pop(), xx = st.pop(); let a = xx; while (a >= 0 && same((y * SZ + a) * 4)) a--; a++; let up = false, dn = false;
+    for (; a < SZ && same((y * SZ + a) * 4); a++) { const i = (y * SZ + a) * 4; d[i] = R; d[i + 1] = G; d[i + 2] = B; d[i + 3] = 255;
+      if (y > 0) { const s = same(((y - 1) * SZ + a) * 4); if (s && !up) { st.push(a, y - 1); up = true; } else if (!s) up = false; }
+      if (y < SZ - 1) { const s = same(((y + 1) * SZ + a) * 4); if (s && !dn) { st.push(a, y + 1); dn = true; } else if (!s) dn = false; } } }
+  x.putImageData(img, 0, 0);
+}
+function openClothMaker(draft) {
+  const state = { id: draft ? draft.id : null, name: draft ? draft.name : '' };
+  let W = draft && draft.data ? JSON.parse(JSON.stringify(draft.data)) : null;
+  const toMenu = () => { CUR = null; screenMenu(); };
+  const chooser = () => {
+    const mo = modal('Buat Pakaian', [h('p', { class: 'note', style: 'margin:0 0 8px' }, tr('Pilih apa yang mahu dibuat. Kos menerbitkan') + ': ' + MAKE_FEE + ' WeBux. ' + tr('Bila ada pemain beli, anda dapat harga jualan') + ' + ' + SELL_BONUS + ' WeBux (Bonus).'),
+      h('div', { class: 'srvlist' }, Object.keys(CI_KINDS).map(k => h('button', { class: 'btn wide', style: 'text-align:left', onclick: () => { mo.close(); W = { kind: k, base: CI_KINDS[k].base || '#ffffff', tex: null, parts: {} }; go(); } }, CI_KINDS[k].n + ' (' + CI_KINDS[k].note + ')')))]);
+  };
+  const go = () => { if (CI_KINDS[W.kind].parts && !W.step) { W.step = 'parts'; } return W.step === 'paint' || !CI_KINDS[W.kind].parts ? paint() : parts(); };
+  function parts() {
+    clearUI(); setMode('studio'); MUS.stop(); const K = CI_KINDS[W.kind], PS = new PartStudio(W.kind); CUR = PS; PS.importParts(W.parts); const hud = h('div', { class: 'hud-studio' }); UIROOT().append(hud);
+    const exit = () => { PS.destroy(); toMenu(); }, snapW = () => { W.parts = PS.exportParts(); return W; };
+    const tryExit = () => { const mo = modal('Keluar?', [h('p', { class: 'desc' }, 'Pakaian ini belum diterbitkan.'), h('div', { class: 'row' }, h('button', { class: 'btn green', onclick: () => { mo.close(); saveDraftUI('cloth', state, () => (W.step = 'parts', snapW()), exit); } }, 'Simpan Draf & Keluar'), h('button', { class: 'btn red', onclick: () => { mo.close(); exit(); } }, 'Keluar'), h('button', { class: 'btn', onclick: () => mo.close() }, 'Teruskan'))]); };
+    const bMv = h('button', { class: 'hbtn', onclick: () => { PS.setMode('move'); sync(); } }, 'Move'), bSt = h('button', { class: 'hbtn on', onclick: () => { PS.setMode('stretch'); sync(); } }, 'Panjang'); const sync = () => { bMv.classList.toggle('on', PS.mode === 'move'); bSt.classList.toggle('on', PS.mode === 'stretch'); };
+    const bar = h('div', { class: 'stool', style: 'overflow-x:auto' }, h('button', { class: 'xbtn', onclick: tryExit, 'aria-label': 'Keluar' }, '×'), bMv, bSt, ...CC_SHAPES.map(s => h('button', { class: 'hbtn', onclick: () => PS.addShape(s[0]) }, '+ ' + s[1])), h('span', { class: 'sp' }),
+      h('button', { class: 'hbtn', onclick: () => saveDraftUI('cloth', state, () => (W.step = 'parts', snapW())) }, 'Draf'),
+      h('button', { class: 'btn green sm', style: 'flex:none', onclick: () => { if (!Object.keys(PS.parts).length) { toast('Tambah sekurang-kurangnya satu part', 'err'); return; } snapW(); W.step = 'paint'; PS.destroy(); go(); } }, 'Seterusnya: Lukis'));
+    const panel = h('div', { class: 'spanel' }); hud.append(bar, panel); const hint = h('div', { class: 'hint nopt' }, K.n + ': tekan + untuk tambah part. Kotak kelabu ialah kepala/badan sebagai panduan saiz.'); hud.append(hint);
+    const draw = () => { const k = PS.sel; panel.replaceChildren(); panel.hidden = !k; if (!k) return; hint.hidden = true; const p = PS.parts[k], col = h('input', { class: 'inp', type: 'color', value: p.c, id: 'pcol' }); col.addEventListener('input', () => PS.setColor(col.value));
+      panel.append(h('h4', null, 'Part'), h('div', { class: 'shp' }, CC_SHAPES.map(s => h('button', { class: p.t === s[0] ? 'on' : '', onclick: () => PS.setShape(s[0]) }, s[1]))), h('div', { class: 'sf one' }, h('label', { for: 'pcol' }, 'Warna'), col),
+        h('div', { class: 'sbtns' }, h('button', { class: 'btn sm', onclick: () => PS.dup() }, 'Salin'), h('button', { class: 'btn red sm', onclick: () => PS.remove(k) }, 'Padam'))); };
+    PS.onSelect = draw; draw();
+  }
+  function paint() {
+    clearUI(); setMode('char'); const K = CI_KINDS[W.kind], SZ = CI_SZ, face = !!K.face, isParts = !!K.parts;
+    const cv = document.createElement('canvas'); cv.width = cv.height = SZ; cv.className = 'pcv'; const x = cv.getContext('2d', { willReadFrequently: true });
+    let tool = 'pen', color = '#ff4d6d', size = 4, zoom = 1, hist = [], hi = -1, dr = null, pan = null; const bgc = () => face ? null : isParts ? '#ffffff' : W.base;
+    const blank = () => { x.clearRect(0, 0, SZ, SZ); if (bgc()) { x.fillStyle = bgc(); x.fillRect(0, 0, SZ, SZ); } };
+    const snap = () => { hist = hist.slice(0, hi + 1); hist.push(x.getImageData(0, 0, SZ, SZ)); if (hist.length > 25) hist.shift(); hi = hist.length - 1; };
+    const wrap = h('div', { class: 'pwrap' }, cv), zl = h('span', { class: 'chip' }, '100%'); const applyZoom = () => { cv.style.width = cv.style.height = Math.round(280 * zoom) + 'px'; zl.textContent = Math.round(zoom * 100) + '%'; };
+    blank(); snap(); if (W.tex) { const im = new Image(); im.onload = () => { x.clearRect(0, 0, SZ, SZ); x.drawImage(im, 0, 0, SZ, SZ); snap(); }; im.src = W.tex; }
+    const pt = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * SZ, (e.clientY - r.top) / r.height * SZ]; };
+    const stroke = (a, b) => { x.save(); x.lineCap = x.lineJoin = 'round'; x.lineWidth = size; if (tool === 'erase') { if (bgc()) x.strokeStyle = bgc(); else x.globalCompositeOperation = 'destination-out'; } else x.strokeStyle = color; x.beginPath(); x.moveTo(a[0], a[1]); x.lineTo(b[0] + .01, b[1] + .01); x.stroke(); x.restore(); };
+    cv.addEventListener('pointerdown', e => { e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (z) { }
+      if (tool === 'pan') { pan = { x: e.clientX, y: e.clientY, sx: wrap.scrollLeft, sy: wrap.scrollTop, id: e.pointerId }; return; }
+      const p = pt(e); if (tool === 'fill') { floodFill(x, SZ, p[0], p[1], color); snap(); return; } dr = { last: p, id: e.pointerId }; stroke(p, p); });
+    cv.addEventListener('pointermove', e => { if (pan && e.pointerId === pan.id) { wrap.scrollLeft = pan.sx - (e.clientX - pan.x); wrap.scrollTop = pan.sy - (e.clientY - pan.y); return; } if (!dr || e.pointerId !== dr.id) return; const p = pt(e); stroke(dr.last, p); dr.last = p; });
+    const up = e => { if (pan) { pan = null; return; } if (dr) { dr = null; snap(); } }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    const tb = {}, mkT = (k, label) => (tb[k] = h('button', { class: 'hbtn' + (tool === k ? ' on' : ''), onclick: () => { tool = k; Object.keys(tb).forEach(q => tb[q].classList.toggle('on', q === k)); cv.style.cursor = k === 'pan' ? 'grab' : 'crosshair'; } }, label));
+    const undo = () => { if (hi > 0) { hi--; x.putImageData(hist[hi], 0, 0); } }, redo = () => { if (hi < hist.length - 1) { hi++; x.putImageData(hist[hi], 0, 0); } };
+    const col = h('input', { type: 'color', value: color, class: 'hcol', 'aria-label': 'Warna' }); col.addEventListener('input', () => { color = col.value; if (tool === 'erase') tb.pen.click(); });
+    const sw = ['#000000', '#ffffff', '#ff4d6d', '#ff9f1c', '#ffe066', '#2ecc71', '#2fd4ff', '#4d6dff', '#b04dff', '#ff7ab8', '#8a5a2b', '#9aa5b8'].map(c => h('button', { class: 'sw', style: 'background:' + c, 'aria-label': c, onclick: () => { color = c; col.value = c; if (tool === 'erase') tb.pen.click(); } }));
+    const sz = h('input', { type: 'range', min: 1, max: 24, value: size, 'aria-label': 'Saiz berus' }); sz.addEventListener('input', () => { size = +sz.value; });
+    let baseRow = null; if (!face && !isParts) { const bc = h('input', { type: 'color', value: W.base, class: 'hcol', 'aria-label': 'Warna asas' }); bc.addEventListener('change', () => { const o = W.base, nn = bc.value, a = parseInt(o.slice(1), 16), b = parseInt(nn.slice(1), 16), im = x.getImageData(0, 0, SZ, SZ), d = im.data; for (let i = 0; i < d.length; i += 4) if (d[i] === (a >> 16) && d[i + 1] === ((a >> 8) & 255) && d[i + 2] === (a & 255)) { d[i] = b >> 16; d[i + 1] = (b >> 8) & 255; d[i + 2] = b & 255; } x.putImageData(im, 0, 0); W.base = nn; snap(); }); baseRow = h('div', { class: 'row', style: 'align-items:center;gap:6px' }, h('span', null, 'Warna asas'), bc); }
+    const getTex = () => { const b = document.createElement('canvas'); b.width = b.height = SZ; const bx = b.getContext('2d'); if (bgc()) { bx.fillStyle = bgc(); bx.fillRect(0, 0, SZ, SZ); } const same = b.toDataURL() === cv.toDataURL(); return same && isParts ? null : cv.toDataURL('image/png'); };
+    const stash = () => { W.tex = getTex(); W.step = 'paint'; return W; };
+    const exit = () => { toMenu(); };
+    const tryExit = () => { const mo = modal('Keluar?', [h('p', { class: 'desc' }, 'Pakaian ini belum diterbitkan.'), h('div', { class: 'row' }, h('button', { class: 'btn green', onclick: () => { mo.close(); saveDraftUI('cloth', state, stash, exit); } }, 'Simpan Draf & Keluar'), h('button', { class: 'btn red', onclick: () => { mo.close(); exit(); } }, 'Keluar'), h('button', { class: 'btn', onclick: () => mo.close() }, 'Teruskan'))]); };
+    const publish = () => {
+      stash(); const name = h('input', { class: 'inp', id: 'cin', maxlength: 20, placeholder: 'Nama ' + K.n }), price = h('input', { class: 'inp', id: 'cip', type: 'number', min: 0, max: 1e6, value: 50, inputmode: 'numeric' }), msg = h('div', { class: 'msg' }), pv = h('img', { class: 'thumb', style: 'width:130px;display:block;margin:0 auto', alt: '' });
+      const tmp = { id: 'tmp' + Date.now(), kind: W.kind, base: W.base, tex: W.tex, parts: W.parts }; CIT.mem[tmp.id] = tmp; const cxe = {}; cxe[W.kind] = tmp.id; ciReady(tmp).then(() => { pv.src = Thumb.full({ cx: cxe }); });
+      const mo = modal('Terbitkan ' + K.n, [pv, h('label', { class: 'f', for: 'cin' }, 'Nama'), name, h('label', { class: 'f', for: 'cip' }, 'Harga (WeBux)'), price, h('p', { class: 'note' }, tr('Kos menerbitkan') + ': ' + MAKE_FEE + ' WeBux. ' + tr('Setiap kali pemain lain membelinya anda dapat harga jualan') + ' + ' + SELL_BONUS + ' WeBux (Bonus).'), msg,
+        h('button', { class: 'btn green wide', onclick: () => {
+          const n = name.value.trim(), pr = Math.max(0, Math.min(1e6, Math.floor(Number(price.value) || 0))); if (n.length < 2) { msg.className = 'msg err'; msg.textContent = 'Nama minimum 2 huruf'; return; }
+          const er = payMake(); if (er) { msg.className = 'msg err'; msg.textContent = er; return; }
+          const it = { id: 'ci' + Date.now().toString(36) + Math.floor(Math.random() * 99), kind: W.kind, name: n, creator: ME.name, price: pr, created: Date.now(), base: W.base, tex: W.tex, parts: isParts ? W.parts : null };
+          const l = CIT.list().slice(); l.push(it); if (!CIT.save(l)) { msg.className = 'msg err'; msg.textContent = 'Storan penuh'; return; }
+          delete CIT.mem[tmp.id]; DRF.del(state.id); mo.close(); toMenu(); toast(tr('Diterbitkan ke Market!'), 'ok');
+        } }, 'Terbitkan (' + MAKE_FEE + ' WeBux)')], { onClose: () => { delete CIT.mem[tmp.id]; } }); name.focus();
+    };
+    const root = h('div', { class: 'screen paintscr' },
+      h('div', { class: 'chead' }, h('h2', null, 'Lukis: ' + K.n), isParts ? h('button', { class: 'btn sm', onclick: () => { stash(); W.step = 'parts'; go(); } }, 'Ubah Part') : null, h('button', { class: 'btn sm', onclick: () => saveDraftUI('cloth', state, stash) }, 'Draf'), h('button', { class: 'btn green sm', onclick: publish }, 'Terbit'), h('button', { class: 'xbtn', onclick: tryExit, 'aria-label': 'Keluar' }, '×')),
+      wrap,
+      h('div', { class: 'ptools' }, h('div', { class: 'row' }, mkT('pen', 'Berus'), mkT('erase', 'Pemadam'), mkT('fill', 'Isi'), mkT('pan', 'Geser'), h('button', { class: 'hbtn', onclick: undo, 'aria-label': 'Undo' }, '↶'), h('button', { class: 'hbtn', onclick: redo, 'aria-label': 'Redo' }, '↷'),
+        h('button', { class: 'hbtn', onclick: () => { zoom = Math.max(.5, +(zoom - .25).toFixed(2)); applyZoom(); }, 'aria-label': 'Zoom out' }, '−'), zl, h('button', { class: 'hbtn', onclick: () => { zoom = Math.min(4, +(zoom + .25).toFixed(2)); applyZoom(); }, 'aria-label': 'Zoom in' }, '+'),
+        h('button', { class: 'hbtn', onclick: () => { blank(); snap(); } }, 'Padam semua')), h('div', { class: 'row', style: 'align-items:center' }, col, ...sw), h('div', { class: 'row', style: 'align-items:center;gap:8px' }, h('span', null, 'Saiz'), sz, baseRow)));
+    UIROOT().append(root); applyZoom();
+  }
+  if (W) return go(); chooser();
+}
+
 /* ---- studio UI ---- */
 function openStudio() {
   const card = (ico, ttl, sub, fn) => h('button', { class: 'chcard', onclick: () => { mo.close(); fn(); } }, h('i', null, ico), h('b', null, ttl), h('small', null, sub));
-  const mo = modal('Studio', [h('p', { class: 'note', style: 'margin:0 0 10px' }, 'Pilih salah satu'), h('div', { class: 'chrow' }, card('🎮', 'Buat Game', 'Bina map dan terbitkan permainan', openGameStudio), card('🧍', 'Buat Character', 'Bina watak sendiri dan jual di Market', openCharStudio))]);
+  const mo = modal('Studio', [h('p', { class: 'note', style: 'margin:0 0 10px' }, 'Pilih salah satu'), h('div', { class: 'chrow' }, card('🎮', 'Buat Game', 'Bina map dan terbitkan permainan', openGameStudio), card('🧍', 'Buat Character', 'Bina watak sendiri dan jual di Market', openCharStudio)), h('div', { class: 'chrow', style: 'margin-top:10px' }, card('👕', 'Buat Pakaian', 'Lukis baju, seluar, topi, mask, gear dan jual', () => openClothMaker()), card('📝', 'Draft', 'Teruskan binaan yang belum siap (' + DRF.list().length + ')', openDrafts))]);
 }
-function openGameStudio() {
+function openGameStudio(draft) {
   clearUI(); setMode('studio'); MUS.stop();
   const ST = new StudioSession(); CUR = ST; ST.ui = []; ST.selUI = null;
   const hud = h('div', { class: 'hud-studio' }); UIROOT().append(hud);
+  const dState = { id: draft ? draft.id : null, name: draft ? draft.name : '' }; const getDraft = () => ({ objs: ST.data(), ui: JSON.parse(JSON.stringify(ST.ui)), sky: ST.sky, music: ST.music !== false });
   let left = null, setOpen = false, leftEl = null, setEl = null, MODE = 'move'; let dunOpen = true, dunEl = null, menuId = null; const STEP = { move: 1, size: 1, rot: 15 };
   const exit = () => { removeEventListener('keydown', kd); ST.destroy(); CUR = null; screenMenu(); };
   const tryExit = () => {
     if (!ST.objs.length) return exit();
-    const mo = modal('Keluar dari Studio?', [h('p', { class: 'desc' }, 'Map ini belum diterbitkan. Jika keluar, semua binaan akan hilang.'), h('div', { class: 'row' }, h('button', { class: 'btn red', onclick: () => { mo.close(); exit(); } }, 'Keluar'), h('button', { class: 'btn', onclick: () => mo.close() }, 'Teruskan bina'))]);
+    const mo = modal('Keluar dari Studio?', [h('p', { class: 'desc' }, 'Map ini belum diterbitkan. Jika keluar, semua binaan akan hilang.'), h('div', { class: 'row' }, h('button', { class: 'btn green', onclick: () => { mo.close(); saveDraftUI('game', dState, getDraft, exit); } }, 'Simpan Draf & Keluar'), h('button', { class: 'btn red', onclick: () => { mo.close(); exit(); } }, 'Keluar'), h('button', { class: 'btn', onclick: () => mo.close() }, 'Teruskan bina'))]);
   };
   const bPart = h('button', { class: 'hbtn', onclick: () => setLeft('part') }, 'Part'), bSet = h('button', { class: 'hbtn', onclick: () => { setOpen = !setOpen; renderSet(); } }, 'Setting'), bTool = h('button', { class: 'hbtn', onclick: () => setLeft('tool') }, 'ToolBox');
   const bDun = h('button', { class: 'hbtn on', onclick: () => { dunOpen = !dunOpen; drawDun(); renderSet(); } }, 'Dunia');
   const count = h('span', { style: 'color:var(--mut);font-size:13px;white-space:nowrap' }, '0 objek');
-  const tools = h('div', { class: 'stool' }, h('button', { class: 'xbtn', onclick: tryExit, 'aria-label': 'Keluar' }, '×'), bPart, bTool, bSet, bDun, h('button', { class: 'hbtn', id: 'undob', onclick: () => ST.undo(), 'aria-label': 'Undo' }, '↶'), h('button', { class: 'hbtn', id: 'redob', onclick: () => ST.redo(), 'aria-label': 'Redo' }, '↷'), h('span', { class: 'sp' }), count,
-    h('button', { class: 'hbtn', onclick: test }, 'Cuba'), h('button', { class: 'btn green sm', style: 'flex:none', onclick: publish }, 'Publish'));
+  const bMove = h('button', { class: 'hbtn on', onclick: () => ST.gSet(ST.gmode === 'move' ? null : 'move') }, 'Move'), bSz = h('button', { class: 'hbtn', onclick: () => ST.gSet(ST.gmode === 'size' ? null : 'size') }, 'Panjang');
+  ST.onDrop = () => renderSet();
+  ST.onGmode = m => { bMove.classList.toggle('on', m === 'move'); bSz.classList.toggle('on', m === 'size'); };
+  const tools = h('div', { class: 'stool' }, h('button', { class: 'xbtn', onclick: tryExit, 'aria-label': 'Keluar' }, '×'), bMove, bSz, bPart, bTool, bSet, bDun, h('button', { class: 'hbtn', id: 'undob', onclick: () => ST.undo(), 'aria-label': 'Undo' }, '↶'), h('button', { class: 'hbtn', id: 'redob', onclick: () => ST.redo(), 'aria-label': 'Redo' }, '↷'), h('span', { class: 'sp' }), count,
+    h('button', { class: 'hbtn', onclick: () => saveDraftUI('game', dState, getDraft) }, 'Draf'), h('button', { class: 'hbtn', onclick: test }, 'Cuba'), h('button', { class: 'btn green sm', style: 'flex:none', onclick: publish }, 'Publish'));
   hud.append(tools);
   const layer = uiLayer(ST, hud, it => { ST.select(null); ST.selUI = it.id; setOpen = true; renderSet(); });
   const addUI = k => { const it = uiAdd(ST, k); ST.select(null); ST.selUI = it.id; setOpen = true; layer.redraw(); renderSet(); };
@@ -4775,7 +5009,7 @@ function openGameStudio() {
       h('button', { class: 'btn green wide', onclick: () => {
         const n = name.value.trim(); if (n.length < 3) { msg.className = 'msg err'; msg.textContent = 'Nama permainan minimum 3 huruf'; return; }
         const gs = DB.games(); gs.push({ id: 'g' + Date.now().toString(36), name: n, desc: desc.value.trim(), owner: ME.name, objects: ST.data(), ui: JSON.parse(JSON.stringify(ST.ui)), sky: ST.sky, music: ST.music !== false, icon: [...n].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % ICONS.length, img: img || undefined, joins: 0, likes: [], created: Date.now() }); DB.saveGames(gs); NET.publishGame(gs[gs.length - 1]);
-        mo.close(); exit(); toast('Diterbitkan! Anda dapat 1 WeBux setiap pemain lain yang masuk.', 'ok');
+        DRF.del(dState.id); mo.close(); exit(); toast('Diterbitkan! Anda dapat 1 WeBux setiap pemain lain yang masuk.', 'ok');
       } }, 'Publish')]);
     name.focus();
   }
@@ -4815,6 +5049,7 @@ function openGameStudio() {
     draw();
   }
   drawDun(); setLeft('part'); renderSet();
+  if (draft && draft.data) { const d = draft.data; ST.ui = d.ui || []; ST.sky = d.sky || SKY_DEFAULT; ST.music = d.music !== false; ST.load(JSON.stringify(d.objs || [])); ST.hist = [JSON.stringify(ST.objs)]; ST.hi = 0; layer.redraw(); drawDun(); renderSet(); }
 }
 
 /* ---- boot ---- */
